@@ -1,21 +1,23 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/zi-yang-zhang/cryptopia-api/signin"
+	"log"
+
+	"github.com/zi-yang-zhang/cryptopia-api/profile"
+	"golang.org/x/sync/errgroup"
+)
+
+var (
+	g errgroup.Group
 )
 
 func main() {
-	router := gin.Default()
-	api := router.Group("/api")
-	v1 := api.Group("/v1")
-	setupV1Endpoint(v1)
-	router.Run(":9000")
-}
 
-func setupV1Endpoint(v1 *gin.RouterGroup) {
-	signIn := v1.Group("/signin")
-	tokenSignIn := signIn.Group("/token")
-	tokenSignIn.GET("/google", signin.GoogleSignIn)
+	g.Go(func() error {
+		return profile.ProfileService()
+	})
 
+	if err := g.Wait(); err != nil {
+		log.Fatal(err)
+	}
 }
