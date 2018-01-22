@@ -7,69 +7,82 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hailocab/gocassa"
 	"github.com/zi-yang-zhang/cryptopia-api/core"
-	auth "github.com/zi-yang-zhang/go-oauth-authenticator"
+	"github.com/zi-yang-zhang/go-oauth-authenticator"
+)
+
+const (
+	SignUpUserExists      = "SUE1"
+	SignUpUserCreateError = "SUE2"
+	SignInUserNotFound    = "AUTH1"
 )
 
 type user struct {
-	UserID      string    `cql:"uid"`
-	Email       string    `cql:"email"`
-	DisplayName string    `cql:"displayName"`
-	Picture     string    `cql:"pictureUrl"`
-	GivenName   string    `cql:"givenName"`
-	LastName    string    `cql:"lastName"`
-	Created     time.Time `cql:"createdAt"`
-	userConfig  `cql:",squash"`
+	UserID      string    `cql:"uid" json:"uid"`
+	Email       string    `cql:"email" json:"email"`
+	DisplayName string    `cql:"displayName" json:"displayName"`
+	Picture     string    `cql:"pictureUrl" json:"pictureUrl"`
+	GivenName   string    `cql:"givenName" json:"givenName"`
+	LastName    string    `cql:"lastName" json:"lastName"`
+	Created     time.Time `cql:"createdAt" json:"createdAt"`
+	userConfig  `cql:",squash" json:"config"`
 }
 
-type userResponse struct {
-	UserID      string     `json:"uid"`
-	Email       string     `json:"email"`
-	DisplayName string     `json:"displayName"`
-	Picture     string     `json:"pictureUrl"`
-	GivenName   string     `json:"givenName"`
-	LastName    string     `json:"lastName"`
-	Created     time.Time  `json:"createdAt"`
-	Config      userConfig `json:"config"`
-}
-
-func userGoogleSignUpEndpoint(keyspace gocassa.KeySpace) gin.HandlerFunc {
+func userSignInEndpoint(userTable gocassa.Table) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		jwt, ok := auth.GetGoogleClaims(c)
+		token, ok := c.Get(core.JwtKey)
 		if !ok {
-			panic("Jwt not found")
+			c.JSON(http.StatusBadRequest, core.CreateError(core.JWTError, "JWT not found"))
 		}
-
-		userTable := keyspace.Table("user", &user{}, gocassa.Keys{
-			PartitionKeys: []string{"uid"},
-		})
-		err := userTable.CreateIfNotExist()
-		if err != nil {
-			panic(err)
-		}
+		tokenProvider, ok := token.(auth.AuthenticationInfo)
 		existingUser := user{}
-		if err = userTable.Where(gocassa.Eq("uid", jwt.Subject)).ReadOne(&existingUser).Run(); err == nil {
-			c.JSON(http.StatusOK, gin.H{
-				core.ErrorResponseKey: "User exists",
-			})
+		if err := userTable.Where(gocassa.Eq("uid", tokenProvider.GetId())).ReadOne(&existingUser).Run(); err != nil {
+			c.JSON(http.StatusNotFound, core.CreateError(SignInUserNotFound, "User not found"))
 			return
 		}
+		c.JSON(http.StatusOK, existingUser)
+	}
+}
 
-		newUser := user{
-			UserID:      jwt.Subject,
-			Email:       jwt.Email,
-			DisplayName: jwt.DisplayName,
-			Picture:     jwt.Picture,
-			GivenName:   jwt.GivenName,
-			LastName:    jwt.FamilyName,
-			Created:     time.Now(),
-			userConfig:  userConfig{},
+func userSignUpEndpoint(userTable gocassa.Table) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, ok := c.Get(core.JwtKey)
+		if !ok {
+			c.JSON(http.StatusBadRequest, core.CreateError(core.JWTError, "JWT not found"))
 		}
-		err = userTable.Set(newUser).Run()
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				core.ErrorResponseKey: "Cannot create user",
-			})
+		tokenProvider, ok := token.(auth.AuthenticationInfo)
+		switch issuer := tokenProvider.GetIssuer(); issuer {
+
+		case auth.IssuerGoogle:
+			googleSignUp(userTable, c, tokenProvider)
 			return
 		}
 	}
+}
+
+func googleSignUp(userTable gocassa.Table, c *gin.Context, token auth.AuthenticationInfo) {
+	googleClaims := token.(*auth.GoogleJWTClaims)
+
+	existingUser := user{}
+	if err := userTable.Where(gocassa.Eq("uid", googleClaims.Subject)).ReadOne(&existingUser).Run(); err == nil {
+		c.JSON(http.StatusNotFound, core.CreateError(SignUpUserExists, "User exists"))
+		return
+	}
+
+	newUser := user{
+		UserID:      googleClaims.Subject,
+		Email:       googleClaims.Email,
+		DisplayName: googleClaims.DisplayName,
+		Picture:     googleClaims.Picture,
+		GivenName:   googleClaims.GivenName,
+		LastName:    googleClaims.FamilyName,
+		Created:     time.Now(),
+		userConfig:  userConfig{},
+	}
+	err := userTable.Set(newUser).Run()
+	if err != nil {
+		c.JSON(http.StatusOK, core.CreateError(SignUpUserCreateError, "Cannot create user"))
+		return
+	}
+	c.JSON(http.StatusCreated, newUser)
+	return
 }

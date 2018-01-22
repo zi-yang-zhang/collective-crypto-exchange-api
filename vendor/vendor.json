@@ -55,6 +55,10 @@
 			"revision": ""
 		},
 		{
+			"path": "e",
+			"revision": ""
+		},
+		{
 			"path": "encoding",
 			"revision": ""
 		},
@@ -249,10 +253,10 @@
 			"revisionTime": "2017-12-17T08:43:48Z"
 		},
 		{
-			"checksumSHA1": "ZAfU/BtA4vE69oH4hkpDMPKTysw=",
+			"checksumSHA1": "I7Uw0+eFkwopp1hL5m7Y+lDQV+k=",
 			"path": "github.com/zi-yang-zhang/go-oauth-authenticator",
-			"revision": "b09ecfbc741ab29e35ab8942e6bf82d2e4519255",
-			"revisionTime": "2017-12-23T04:06:52Z"
+			"revision": "786ad89096ecb0aade2923696ba44e9f7264bc36",
+			"revisionTime": "2018-01-22T04:45:41Z"
 		},
 		{
 			"path": "go/format",

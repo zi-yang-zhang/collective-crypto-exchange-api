@@ -9,8 +9,10 @@ import (
 )
 
 func profileHandler() http.Handler {
-	e := core.AuthEnabled()
-	e.GET("/signup", userGoogleSignUpEndpoint(getKeySpace()))
+	e := core.SignUpEnabled()
+	userTable := getUserTable()
+	e.GET("/signUp", userSignUpEndpoint(userTable))
+	e.GET("/signIn", userSignInEndpoint(userTable))
 	return e
 }
 
@@ -31,4 +33,16 @@ func getKeySpace() gocassa.KeySpace {
 	}
 
 	return keySpace
+}
+
+func getUserTable() gocassa.Table {
+	keySpace := getKeySpace()
+	userTable := keySpace.Table("user", &user{}, gocassa.Keys{
+		PartitionKeys: []string{"uid"},
+	})
+	err := userTable.CreateIfNotExist()
+	if err != nil {
+		panic(err)
+	}
+	return userTable
 }
