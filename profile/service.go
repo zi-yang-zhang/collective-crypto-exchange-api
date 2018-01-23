@@ -8,18 +8,18 @@ import (
 	"github.com/zi-yang-zhang/cryptopia-api/core"
 )
 
-func profileHandler() http.Handler {
-	e := core.SignUpEnabled()
+func profileHandler(authParams map[string]interface{}) http.Handler {
+	e := core.SignUpEnabled(authParams)
 	userTable := getUserTable()
 	e.GET("/signUp", userSignUpEndpoint(userTable))
 	e.GET("/signIn", userSignInEndpoint(userTable))
 	return e
 }
 
-func ProfileService() error {
+func ProfileService(authParams map[string]interface{}) error {
 	server := &http.Server{
 		Addr:         ":9100",
-		Handler:      profileHandler(),
+		Handler:      profileHandler(authParams),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}

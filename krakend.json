@@ -1,31 +1,54 @@
 {
-  "version": 1,
-  "default_max_rate": 0,
-  "client_max_rate": 0,
-  "throttling_header": "",
-  "timeout": "3000ms",
-  "cache_ttl": "300s",
-  "oauth": {
-    "disable": true
-  },
-  "security": {
-    "disable": true
-  },
+  "version": 2,
   "name": "Cryptopia-Api",
-  "host": [
-    "http://profile:9100"
-  ],
+  "extra_config": {
+    "github_com/devopsfaith/krakend-gologging": {
+      "level": "WARNING",
+      "prefix": "[Cryptopia]",
+      "syslog": false,
+      "stdout": true
+    }
+  },
+  "max_idle_connections": 250,
+  "timeout": "3000ms",
+  "read_timeout": "0s",
+  "write_timeout": "0s",
+  "idle_timeout": "0s",
+  "read_header_timeout": "0s",
+  "cache_ttl": "300s",
+  "sd_providers": {
+    "hosts": [
+      {
+        "sd": "static",
+        "host": "http://localhost:9100"
+      }
+    ]
+  },
   "endpoints": [
     {
-      "endpoint": "/signin/google",
+      "endpoint": "/signUp",
       "method": "GET",
       "concurrent_calls": 1,
-      "client_max_rate": 0,
       "backend": [
         {
-          "url_pattern": "/token/google",
+          "url_pattern": "/signUp",
+          "encoding": "json",
           "host": [
-            "http://profile:9100"
+            "http://localhost:9100"
+          ]
+        }
+      ]
+    },
+    {
+      "endpoint": "/signIn",
+      "method": "GET",
+      "concurrent_calls": 1,
+      "backend": [
+        {
+          "url_pattern": "/signIn",
+          "encoding": "json",
+          "host": [
+            "http://localhost:9100"
           ]
         }
       ]

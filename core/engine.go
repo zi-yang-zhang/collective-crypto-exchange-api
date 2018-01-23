@@ -21,6 +21,10 @@ const (
 	JWTError                = "JWTE1"
 )
 
+type Config struct {
+	AuthParams map[string]interface{} `json:"authParams"`
+}
+
 type heartbeatResponse struct {
 	Status string `json:"status"`
 }
@@ -42,22 +46,21 @@ func Default() *gin.Engine {
 }
 
 //AuthEnabled gin engine
-func AuthEnabled() *gin.Engine {
+func AuthEnabled(authParams map[string]interface{}) *gin.Engine {
 	engine := Default()
-	engine.Use(authenticationMiddleWare())
+	engine.Use(authenticationMiddleWare(authParams))
 	return engine
 }
 
 //AuthEnabled gin engine
-func SignUpEnabled() *gin.Engine {
+func SignUpEnabled(authParams map[string]interface{}) *gin.Engine {
 	engine := Default()
-	engine.Use(signUpMiddleWare())
+	engine.Use(signUpMiddleWare(authParams))
 	return engine
 }
 
-func configAuthenticator() *auth.AuthenticationProvider {
-	authParam := map[string]interface{}{"google": "963603210536-qau1i4c8l9lj5hvkl09o7fvu8d045b1r.apps.googleusercontent.com"}
-	authenticator := auth.New(authParam)
+func configAuthenticator(authParams map[string]interface{}) *auth.AuthenticationProvider {
+	authenticator := auth.New(authParams)
 	return authenticator
 }
 
@@ -68,8 +71,8 @@ func CreateError(code string, message string) gin.H {
 	}
 }
 
-func signUpMiddleWare() gin.HandlerFunc {
-	authenticator := configAuthenticator()
+func signUpMiddleWare(authParams map[string]interface{}) gin.HandlerFunc {
+	authenticator := configAuthenticator(authParams)
 	return func(c *gin.Context) {
 		authorization := c.GetHeader("Authorization")
 		if authorization == "" {
@@ -87,8 +90,8 @@ func signUpMiddleWare() gin.HandlerFunc {
 	}
 }
 
-func authenticationMiddleWare() gin.HandlerFunc {
-	authenticator := configAuthenticator()
+func authenticationMiddleWare(authParams map[string]interface{}) gin.HandlerFunc {
+	authenticator := configAuthenticator(authParams)
 	return func(c *gin.Context) {
 		authorization := c.GetHeader("Authorization")
 		claims, ve := authenticator.Authenticate(authorization)

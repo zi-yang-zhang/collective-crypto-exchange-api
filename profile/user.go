@@ -64,7 +64,7 @@ func googleSignUp(userTable gocassa.Table, c *gin.Context, token auth.Authentica
 
 	existingUser := user{}
 	if err := userTable.Where(gocassa.Eq("uid", googleClaims.Subject)).ReadOne(&existingUser).Run(); err == nil {
-		c.JSON(http.StatusNotFound, core.CreateError(SignUpUserExists, "User exists"))
+		c.JSON(http.StatusOK, core.CreateError(SignUpUserExists, "User exists"))
 		return
 	}
 

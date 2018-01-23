@@ -11,3 +11,4 @@
 *.out
 /db
 .idea
+config.json
