@@ -1,29 +1,26 @@
 {
   "version": 2,
-  "name": "Cryptopia-Api",
   "extra_config": {
     "github_com/devopsfaith/krakend-gologging": {
       "level": "WARNING",
       "prefix": "[Cryptopia]",
       "syslog": false,
       "stdout": true
+    },
+    "authParams": {
+      "google": "963603210536-qau1i4c8l9lj5hvkl09o7fvu8d045b1r.apps.googleusercontent.com"
     }
   },
+  "port": 8080,
   "max_idle_connections": 250,
   "timeout": "3000ms",
-  "read_timeout": "0s",
-  "write_timeout": "0s",
+  "read_timeout": "5s",
+  "write_timeout": "5s",
   "idle_timeout": "0s",
-  "read_header_timeout": "0s",
   "cache_ttl": "300s",
-  "sd_providers": {
-    "hosts": [
-      {
-        "sd": "static",
-        "host": "http://localhost:9100"
-      }
-    ]
-  },
+  "host": [
+    "http://localhost:9100"
+  ],
   "endpoints": [
     {
       "endpoint": "/signUp",
@@ -32,6 +29,7 @@
       "backend": [
         {
           "url_pattern": "/signUp",
+          "method": "GET",
           "encoding": "json",
           "host": [
             "http://localhost:9100"
@@ -46,6 +44,7 @@
       "backend": [
         {
           "url_pattern": "/signIn",
+          "method": "GET",
           "encoding": "json",
           "host": [
             "http://localhost:9100"

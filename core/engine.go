@@ -1,24 +1,28 @@
 package core
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/zi-yang-zhang/go-oauth-authenticator"
+	"strconv"
+	"strings"
 )
 
 const (
 	ErrorResponseMessageKey = "errorMessage"
 	ErrorResponseStatusKey  = "errorCode"
-	errorResponseReturnKey  = "errorResponse"
-	responseReturnKey       = "data"
+	ErrorResponseReturnKey  = "errorResponse"
+	ResponseReturnKey       = "data"
 	JwtKey                  = "jwt_key"
 	ClientID                = "X-Request-Client-ID"
 	ClientEmail             = "X-Request-Client-Email"
+	TracingRoot             = "X-Request-Root-Id"
+	TracingPath             = "X-Request-Path-Id"
 	JWTError                = "JWTE1"
+	JWTMissing              = "JWTE2"
+	GeneralError            = "GE1"
 )
 
 type Config struct {
@@ -29,26 +33,10 @@ type heartbeatResponse struct {
 	Status string `json:"status"`
 }
 
-type interceptResponseWriter struct {
-	gin.ResponseWriter
-	body *bytes.Buffer
-}
-
-func (w interceptResponseWriter) Write(b []byte) (int, error) {
-	return w.body.Write(b)
-}
-
 //Default gin engine
 func Default() *gin.Engine {
-	engine := gin.New()
-	engine.Use(preProcessRequest(), gin.Logger(), gin.Recovery(), postProcessResponse())
-	return engine
-}
-
-//AuthEnabled gin engine
-func AuthEnabled(authParams map[string]interface{}) *gin.Engine {
-	engine := Default()
-	engine.Use(authenticationMiddleWare(authParams))
+	engine := gin.Default()
+	engine.Use(headerHandler())
 	return engine
 }
 
@@ -90,53 +78,17 @@ func signUpMiddleWare(authParams map[string]interface{}) gin.HandlerFunc {
 	}
 }
 
-func authenticationMiddleWare(authParams map[string]interface{}) gin.HandlerFunc {
-	authenticator := configAuthenticator(authParams)
+func headerHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authorization := c.GetHeader("Authorization")
-		claims, ve := authenticator.Authenticate(authorization)
-		if ve != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, CreateError(JWTError, ve.Error()))
-			return
-		}
-		c.Writer.Header().Set(ClientID, claims.GetId())
-		c.Writer.Header().Set(ClientEmail, claims.GetEmail())
-		c.Next()
-	}
-
-}
-func postProcessResponse() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Next()
-		intercepted := c.Writer.(*interceptResponseWriter)
-		var response map[string]interface{}
-		json.Unmarshal(intercepted.body.Bytes(), &response)
-		c.Writer = intercepted.ResponseWriter
-		_, hasError := response[ErrorResponseMessageKey]
-		var responseKey string
-		var status int
-		if c.Writer.Status() >= 400 {
-			responseKey = errorResponseReturnKey
-			status = c.Writer.Status()
-		} else if hasError {
-			responseKey = errorResponseReturnKey
-			status = http.StatusOK
+		path := strings.Split(c.GetHeader(TracingPath), ".")
+		if len(path) < 2 {
+			c.Header(TracingPath, c.GetHeader(TracingPath)+".0")
 		} else {
-			responseKey = responseReturnKey
-			status = c.Writer.Status()
+			inc, _ := strconv.ParseInt(path[1], 10, 32)
+			inc++
+			c.Header(TracingPath, c.GetHeader(TracingPath)+strconv.FormatInt(inc, 10))
 		}
-		c.JSON(status, gin.H{
-			responseKey: response,
-		})
-		c.Abort()
-
-	}
-}
-func preProcessRequest() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("X-Request-Root-Id", uuid.New().String())
-		c.Writer.Header().Set("X-Request-Path-Id", uuid.New().String())
-		c.Writer = &interceptResponseWriter{body: new(bytes.Buffer), ResponseWriter: c.Writer}
+		c.Header(TracingRoot, c.GetHeader(TracingRoot))
 		c.Next()
 	}
 }

@@ -12,3 +12,6 @@
 /db
 .idea
 config.json
+krakend.json
+/vendor/*
+!/vendor/vendor.json

@@ -8,12 +8,14 @@ import (
 	"github.com/hailocab/gocassa"
 	"github.com/zi-yang-zhang/cryptopia-api/core"
 	"github.com/zi-yang-zhang/go-oauth-authenticator"
+	"log"
 )
 
 const (
-	SignUpUserExists      = "SUE1"
-	SignUpUserCreateError = "SUE2"
-	SignInUserNotFound    = "AUTH1"
+	SignUpUserExists        = "SUE1"
+	SignUpUserCreateError   = "SUE2"
+	SignInUserNotFound      = "AUTH1"
+	DatabaseConnectionError = "DBE1"
 )
 
 type user struct {
@@ -27,8 +29,15 @@ type user struct {
 	userConfig  `cql:",squash" json:"config"`
 }
 
-func userSignInEndpoint(userTable gocassa.Table) gin.HandlerFunc {
+func userSignInEndpoint(provider UserTableProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userTable, err := provider()
+		if err != nil {
+			log.Print("Cannot get user table", err.Error())
+			c.JSON(http.StatusServiceUnavailable, core.CreateError(DatabaseConnectionError, err.Error()))
+			return
+		}
+
 		token, ok := c.Get(core.JwtKey)
 		if !ok {
 			c.JSON(http.StatusBadRequest, core.CreateError(core.JWTError, "JWT not found"))
@@ -43,8 +52,13 @@ func userSignInEndpoint(userTable gocassa.Table) gin.HandlerFunc {
 	}
 }
 
-func userSignUpEndpoint(userTable gocassa.Table) gin.HandlerFunc {
+func userSignUpEndpoint(provider UserTableProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userTable, err := provider()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, core.CreateError(DatabaseConnectionError, err.Error()))
+			return
+		}
 		token, ok := c.Get(core.JwtKey)
 		if !ok {
 			c.JSON(http.StatusBadRequest, core.CreateError(core.JWTError, "JWT not found"))

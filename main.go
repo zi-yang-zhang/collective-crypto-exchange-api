@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
-
 	"encoding/json"
 	"github.com/zi-yang-zhang/cryptopia-api/core"
+	"github.com/zi-yang-zhang/cryptopia-api/gateway"
 	"github.com/zi-yang-zhang/cryptopia-api/profile"
 	"golang.org/x/sync/errgroup"
 	"io/ioutil"
+	"log"
 )
 
 var (
@@ -15,7 +15,6 @@ var (
 )
 
 func main() {
-
 	data, err := ioutil.ReadFile("config.json")
 	if err != nil {
 		log.Fatal(err)
@@ -24,10 +23,9 @@ func main() {
 	json.Unmarshal(data, &config)
 
 	g.Go(func() error {
-		return profile.ProfileService(config.AuthParams)
+		return profile.Start(config.AuthParams)
 	})
 
-	if err := g.Wait(); err != nil {
-		log.Fatal(err)
-	}
+	gateway.Start()
+
 }
